@@ -1,41 +1,26 @@
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio'); // si el PHP responde HTML en tabla
 const app = express();
-const PORT = process.env.PORT || 3000;
+const axios = require('axios');
+const PORT = process.env.PORT || 10000;
 
+// Ruta raíz para confirmar que el servidor está funcionando
+app.get('/', (req, res) => {
+  res.send('Servidor funcionando ✅');
+});
+
+// Ruta para traer el JSON del PHP
 app.get('/api/consumo', async (req, res) => {
   try {
-    const { data } = await axios.get('https://adminmoviles.infinityfreeapp.com/get_consumo.php');
-
-    // Si ya viene como JSON directamente
-    try {
-      const json = JSON.parse(data);
-      return res.json(json);
-    } catch (e) {
-      // Si no es JSON, asumimos que es HTML con una tabla
-      const $ = cheerio.load(data);
-      const rows = [];
-      $('table tr').each((i, el) => {
-        const cols = $(el).find('td');
-        if (cols.length > 0) {
-          rows.push({
-            campo1: $(cols[0]).text().trim(),
-            campo2: $(cols[1]).text().trim(),
-            // agrega más campos si hay más columnas
-          });
-        }
-      });
-      return res.json(rows);
-    }
-
-  } catch (err) {
-    console.error('Error al obtener los datos:', err.message);
-    res.status(500).json({ error: 'Error al obtener los datos.' });
+    const response = await axios.get('https://adminmoviles.infinityfreeapp.com/get_consumo.php');
+    res.json(response.data); // Reenvía el JSON directamente
+  } catch (error) {
+    console.error('Error al obtener los datos:', error.message);
+    res.status(500).json({ error: 'No se pudieron obtener los datos' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
+
 
