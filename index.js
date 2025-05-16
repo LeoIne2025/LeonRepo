@@ -1,39 +1,41 @@
 const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
-
+const axios = require('axios');
+const cheerio = require('cheerio'); // si el PHP responde HTML en tabla
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.get('/api/consumo', async (req, res) => {
+  try {
+    const { data } = await axios.get('https://adminmoviles.infinityfreeapp.com/get_consumo.php');
 
-const db = mysql.createConnection({
-  host: 'sql212.infinityfree.com', // ejemplo: sql104.infinityfree.com
-  user: 'if0_37751788',
-  password: 'cJG2WZaEFH',
-  database: 'if0_37751788_adminmoviles',
-  port: 3306
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error('Error de conexión:', err);
-    return;
-  }
-  console.log('Conectado a MySQL de InfinityFree');
-});
-
-app.get('/datos', (req, res) => {
-  db.query('SELECT * FROM tu_tabla', (err, results) => {
-    if (err) {
-      console.error('Error en la consulta:', err);
-      res.status(500).send('Error en la base de datos');
-    } else {
-      res.json(results);
+    // Si ya viene como JSON directamente
+    try {
+      const json = JSON.parse(data);
+      return res.json(json);
+    } catch (e) {
+      // Si no es JSON, asumimos que es HTML con una tabla
+      const $ = cheerio.load(data);
+      const rows = [];
+      $('table tr').each((i, el) => {
+        const cols = $(el).find('td');
+        if (cols.length > 0) {
+          rows.push({
+            campo1: $(cols[0]).text().trim(),
+            campo2: $(cols[1]).text().trim(),
+            // agrega más campos si hay más columnas
+          });
+        }
+      });
+      return res.json(rows);
     }
-  });
+
+  } catch (err) {
+    console.error('Error al obtener los datos:', err.message);
+    res.status(500).json({ error: 'Error al obtener los datos.' });
+  }
 });
 
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en puerto ${PORT}`);
 });
+
